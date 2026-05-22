@@ -19,7 +19,6 @@ async function request(path, options = {}) {
   if (res.status === 401) {
     localStorage.removeItem('engapp_token');
     localStorage.removeItem('engapp_user');
-    window.location.href = '/';
     throw new Error('Sessao expirada');
   }
 

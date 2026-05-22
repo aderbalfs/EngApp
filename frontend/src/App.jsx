@@ -16,6 +16,28 @@ function ProtectedRoute({ children, adminOnly }) {
   return children;
 }
 
+function AuthenticatedApp() {
+  const { isAdmin } = useAuth();
+
+  return (
+    <DataProvider>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/convenios" element={<ConveniosList />} />
+          <Route path="/convenios/:id" element={<ConvenioDetail />} />
+          <Route path="/alertas" element={<AlertasPage />} />
+          {isAdmin && (
+            <Route path="/importar" element={<ImportPage />} />
+          )}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </DataProvider>
+  );
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
 
@@ -39,35 +61,14 @@ function AppRoutes() {
     );
   }
 
-  return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/convenios" element={<ConveniosList />} />
-        <Route path="/convenios/:id" element={<ConvenioDetail />} />
-        <Route path="/alertas" element={<AlertasPage />} />
-        <Route
-          path="/importar"
-          element={
-            <ProtectedRoute adminOnly>
-              <ImportPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/login" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
-  );
+  return <AuthenticatedApp />;
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <DataProvider>
-          <AppRoutes />
-        </DataProvider>
+        <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   );
