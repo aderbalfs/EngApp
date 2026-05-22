@@ -8,6 +8,7 @@ import ConveniosList from './pages/ConveniosList';
 import ConvenioDetail from './pages/ConvenioDetail';
 import AlertasPage from './pages/AlertasPage';
 import ImportPage from './pages/ImportPage';
+import UsuariosPage from './pages/UsuariosPage';
 
 function ProtectedRoute({ children, adminOnly }) {
   const { user, isAdmin } = useAuth();
@@ -29,6 +30,9 @@ function AuthenticatedApp() {
           <Route path="/alertas" element={<AlertasPage />} />
           {isAdmin && (
             <Route path="/importar" element={<ImportPage />} />
+          )}
+          {isAdmin && (
+            <Route path="/usuarios" element={<UsuariosPage />} />
           )}
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

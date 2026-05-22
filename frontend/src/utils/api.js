@@ -67,3 +67,9 @@ export const deleteRelatorio = (id) => request(`/relatorios/${id}`, { method: 'D
 
 // Dashboard
 export const fetchDashboard = () => request('/dashboard');
+
+// Usuarios (admin only)
+export const fetchUsuarios = () => request('/usuarios');
+export const createUsuario = (data) => request('/usuarios', { method: 'POST', body: JSON.stringify(data) });
+export const updateUsuario = (id, data) => request(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteUsuario = (id) => request(`/usuarios/${id}`, { method: 'DELETE' });

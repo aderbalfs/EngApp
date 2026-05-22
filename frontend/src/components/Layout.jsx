@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard, FileText, AlertTriangle, Upload, LogOut,
-  Menu, X, Building2, ChevronRight
+  Menu, X, Building2, ChevronRight, Users
 } from 'lucide-react';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/convenios', label: 'Convênios', icon: FileText },
   { to: '/alertas', label: 'Alertas', icon: AlertTriangle },
   { to: '/importar', label: 'Importar CSV', icon: Upload, adminOnly: true },
+  { to: '/usuarios', label: 'Usuarios', icon: Users, adminOnly: true },
 ];
 
 export default function Layout({ children }) {
