@@ -1,16 +1,38 @@
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
 
+function getToken() {
+  return localStorage.getItem('engapp_token');
+}
+
 async function request(path, options = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem('engapp_token');
+    localStorage.removeItem('engapp_user');
+    window.location.href = '/';
+    throw new Error('Sessao expirada');
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro de rede' }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
   return res.json();
 }
+
+// Auth
+export const login = (email, senha) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) });
+export const getMe = () => request('/auth/me');
 
 // Convênios
 export const fetchConvenios = () => request('/convenios');

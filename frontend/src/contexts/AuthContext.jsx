@@ -1,27 +1,57 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { getUser, setUser as saveUser, clearUser } from '../utils/storage';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { login as apiLogin, getMe } from '../utils/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUserState] = useState(() => getUser());
+  const [user, setUser] = useState(() => {
+    try {
+      const data = localStorage.getItem('engapp_user');
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((role) => {
-    const u = { role, loggedAt: new Date().toISOString() };
-    saveUser(u);
-    setUserState(u);
+  // Verificar token ao carregar
+  useEffect(() => {
+    const token = localStorage.getItem('engapp_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    getMe()
+      .then((userData) => {
+        setUser(userData);
+        localStorage.setItem('engapp_user', JSON.stringify(userData));
+      })
+      .catch(() => {
+        localStorage.removeItem('engapp_token');
+        localStorage.removeItem('engapp_user');
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = useCallback(async (email, senha) => {
+    const { token, user: userData } = await apiLogin(email, senha);
+    localStorage.setItem('engapp_token', token);
+    localStorage.setItem('engapp_user', JSON.stringify(userData));
+    setUser(userData);
   }, []);
 
   const logout = useCallback(() => {
-    clearUser();
-    setUserState(null);
+    localStorage.removeItem('engapp_token');
+    localStorage.removeItem('engapp_user');
+    setUser(null);
   }, []);
 
   const isAdmin = user?.role === 'admin';
   const isViewer = user?.role === 'viewer';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin, isViewer }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, isViewer, loading }}>
       {children}
     </AuthContext.Provider>
   );

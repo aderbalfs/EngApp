@@ -17,7 +17,18 @@ function ProtectedRoute({ children, adminOnly }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 text-sm mt-3">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

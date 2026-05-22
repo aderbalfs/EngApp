@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import pool, { initDB } from './database.js';
+import { authenticate, requireAdmin, registerAuthRoutes } from './auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,6 +17,9 @@ function generateId() {
   return Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
 }
 
+// ─── Auth (login, me, CRUD de usuários) ───────────────────
+registerAuthRoutes(app);
+
 // Helper para queries
 async function query(text, params) {
   const res = await pool.query(text, params);
@@ -29,18 +33,18 @@ async function queryOne(text, params) {
 
 // ─── Convênios ────────────────────────────────────────────
 
-app.get('/api/convenios', async (req, res) => {
+app.get('/api/convenios', authenticate, async (req, res) => {
   const rows = await query('SELECT * FROM convenios ORDER BY criado_em DESC');
   res.json(rows);
 });
 
-app.get('/api/convenios/:id', async (req, res) => {
+app.get('/api/convenios/:id', authenticate, async (req, res) => {
   const row = await queryOne('SELECT * FROM convenios WHERE id = $1', [req.params.id]);
   if (!row) return res.status(404).json({ error: 'Convênio não encontrado' });
   res.json(row);
 });
 
-app.post('/api/convenios', async (req, res) => {
+app.post('/api/convenios', authenticate, requireAdmin, async (req, res) => {
   const id = generateId();
   const { objeto, numero_convenio, data_convenio, processo_licitatorio, orcamento_total, valor_liberado_caixa, valor_liberado_estado, total_gasto, data_expiracao, status } = req.body;
   await query(`
@@ -51,7 +55,7 @@ app.post('/api/convenios', async (req, res) => {
   res.status(201).json(row);
 });
 
-app.put('/api/convenios/:id', async (req, res) => {
+app.put('/api/convenios/:id', authenticate, requireAdmin, async (req, res) => {
   const { objeto, numero_convenio, data_convenio, processo_licitatorio, orcamento_total, valor_liberado_caixa, valor_liberado_estado, total_gasto, data_expiracao, status, alerta_formalizado } = req.body;
   await query(`
     UPDATE convenios SET objeto=$1, numero_convenio=$2, data_convenio=$3, processo_licitatorio=$4, orcamento_total=$5, valor_liberado_caixa=$6, valor_liberado_estado=$7, total_gasto=$8, data_expiracao=$9, status=$10, alerta_formalizado=$11
@@ -61,7 +65,7 @@ app.put('/api/convenios/:id', async (req, res) => {
   res.json(row);
 });
 
-app.patch('/api/convenios/:id', async (req, res) => {
+app.patch('/api/convenios/:id', authenticate, requireAdmin, async (req, res) => {
   const existing = await queryOne('SELECT * FROM convenios WHERE id = $1', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Convênio não encontrado' });
   const fields = Object.keys(req.body);
@@ -72,12 +76,12 @@ app.patch('/api/convenios/:id', async (req, res) => {
   res.json(row);
 });
 
-app.delete('/api/convenios/:id', async (req, res) => {
+app.delete('/api/convenios/:id', authenticate, requireAdmin, async (req, res) => {
   await query('DELETE FROM convenios WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
-app.post('/api/convenios/import', async (req, res) => {
+app.post('/api/convenios/import', authenticate, requireAdmin, async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items)) return res.status(400).json({ error: 'items deve ser um array' });
 
@@ -102,12 +106,12 @@ app.post('/api/convenios/import', async (req, res) => {
 
 // ─── Obras ────────────────────────────────────────────────
 
-app.get('/api/convenios/:convenioId/obras', async (req, res) => {
+app.get('/api/convenios/:convenioId/obras', authenticate, async (req, res) => {
   const rows = await query('SELECT * FROM obras WHERE convenio_id = $1', [req.params.convenioId]);
   res.json(rows);
 });
 
-app.post('/api/obras', async (req, res) => {
+app.post('/api/obras', authenticate, requireAdmin, async (req, res) => {
   const id = generateId();
   const { convenio_id, descricao, percentual_execucao, previsao_conclusao, status } = req.body;
   await query(`
@@ -118,7 +122,7 @@ app.post('/api/obras', async (req, res) => {
   res.status(201).json(row);
 });
 
-app.put('/api/obras/:id', async (req, res) => {
+app.put('/api/obras/:id', authenticate, requireAdmin, async (req, res) => {
   const { descricao, percentual_execucao, previsao_conclusao, status } = req.body;
   await query('UPDATE obras SET descricao=$1, percentual_execucao=$2, previsao_conclusao=$3, status=$4 WHERE id=$5',
     [descricao, percentual_execucao || 0, previsao_conclusao, status, req.params.id]);
@@ -126,24 +130,24 @@ app.put('/api/obras/:id', async (req, res) => {
   res.json(row);
 });
 
-app.delete('/api/obras/:id', async (req, res) => {
+app.delete('/api/obras/:id', authenticate, requireAdmin, async (req, res) => {
   await query('DELETE FROM obras WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
 // ─── Contratos ────────────────────────────────────────────
 
-app.get('/api/obras/:obraId/contrato', async (req, res) => {
+app.get('/api/obras/:obraId/contrato', authenticate, async (req, res) => {
   const row = await queryOne('SELECT * FROM contratos WHERE obra_id = $1', [req.params.obraId]);
   res.json(row || null);
 });
 
-app.get('/api/contratos', async (req, res) => {
+app.get('/api/contratos', authenticate, async (req, res) => {
   const rows = await query('SELECT * FROM contratos');
   res.json(rows);
 });
 
-app.post('/api/contratos', async (req, res) => {
+app.post('/api/contratos', authenticate, requireAdmin, async (req, res) => {
   const id = generateId();
   const { obra_id, numero_contrato, construtora, data_inicio, data_expiracao, status } = req.body;
   await query(`
@@ -154,7 +158,7 @@ app.post('/api/contratos', async (req, res) => {
   res.status(201).json(row);
 });
 
-app.put('/api/contratos/:id', async (req, res) => {
+app.put('/api/contratos/:id', authenticate, requireAdmin, async (req, res) => {
   const { numero_contrato, construtora, data_inicio, data_expiracao, status, alerta_formalizado } = req.body;
   await query('UPDATE contratos SET numero_contrato=$1, construtora=$2, data_inicio=$3, data_expiracao=$4, status=$5, alerta_formalizado=$6 WHERE id=$7',
     [numero_contrato, construtora, data_inicio, data_expiracao, status, alerta_formalizado ? 1 : 0, req.params.id]);
@@ -162,7 +166,7 @@ app.put('/api/contratos/:id', async (req, res) => {
   res.json(row);
 });
 
-app.patch('/api/contratos/:id', async (req, res) => {
+app.patch('/api/contratos/:id', authenticate, requireAdmin, async (req, res) => {
   const existing = await queryOne('SELECT * FROM contratos WHERE id = $1', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Contrato não encontrado' });
   const fields = Object.keys(req.body);
@@ -173,19 +177,19 @@ app.patch('/api/contratos/:id', async (req, res) => {
   res.json(row);
 });
 
-app.delete('/api/contratos/:id', async (req, res) => {
+app.delete('/api/contratos/:id', authenticate, requireAdmin, async (req, res) => {
   await query('DELETE FROM contratos WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
 // ─── Lançamentos ──────────────────────────────────────────
 
-app.get('/api/convenios/:convenioId/lancamentos', async (req, res) => {
+app.get('/api/convenios/:convenioId/lancamentos', authenticate, async (req, res) => {
   const rows = await query('SELECT * FROM lancamentos WHERE convenio_id = $1 ORDER BY data DESC', [req.params.convenioId]);
   res.json(rows);
 });
 
-app.post('/api/lancamentos', async (req, res) => {
+app.post('/api/lancamentos', authenticate, requireAdmin, async (req, res) => {
   const id = generateId();
   const { convenio_id, tipo, valor, data, descricao } = req.body;
   await query('INSERT INTO lancamentos (id, convenio_id, tipo, valor, data, descricao) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -194,19 +198,19 @@ app.post('/api/lancamentos', async (req, res) => {
   res.status(201).json(row);
 });
 
-app.delete('/api/lancamentos/:id', async (req, res) => {
+app.delete('/api/lancamentos/:id', authenticate, requireAdmin, async (req, res) => {
   await query('DELETE FROM lancamentos WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
 // ─── Relatórios ───────────────────────────────────────────
 
-app.get('/api/convenios/:convenioId/relatorios', async (req, res) => {
+app.get('/api/convenios/:convenioId/relatorios', authenticate, async (req, res) => {
   const rows = await query('SELECT * FROM relatorios WHERE convenio_id = $1 ORDER BY data DESC', [req.params.convenioId]);
   res.json(rows);
 });
 
-app.post('/api/relatorios', async (req, res) => {
+app.post('/api/relatorios', authenticate, requireAdmin, async (req, res) => {
   const id = generateId();
   const { convenio_id, data, numero_relatorio, nome_arquivo, observacoes } = req.body;
   await query('INSERT INTO relatorios (id, convenio_id, data, numero_relatorio, nome_arquivo, observacoes) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -215,14 +219,14 @@ app.post('/api/relatorios', async (req, res) => {
   res.status(201).json(row);
 });
 
-app.delete('/api/relatorios/:id', async (req, res) => {
+app.delete('/api/relatorios/:id', authenticate, requireAdmin, async (req, res) => {
   await query('DELETE FROM relatorios WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 });
 
 // ─── Dashboard Stats ──────────────────────────────────────
 
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', authenticate, async (req, res) => {
   const [ativos] = await query("SELECT COUNT(*) as count FROM convenios WHERE status = 'Ativo'");
   const [valor] = await query('SELECT COALESCE(SUM(orcamento_total), 0) as total FROM convenios');
   const [obras] = await query("SELECT COUNT(*) as count FROM obras WHERE status = 'Em andamento'");

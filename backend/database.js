@@ -64,6 +64,16 @@ export async function initDB() {
         nome_arquivo TEXT,
         observacoes TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id TEXT PRIMARY KEY,
+        nome TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        senha_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin', 'viewer')),
+        ativo BOOLEAN DEFAULT true,
+        criado_em TIMESTAMP DEFAULT NOW()
+      );
     `);
     console.log('Database tables initialized');
   } finally {

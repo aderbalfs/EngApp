@@ -37,10 +37,13 @@ export default function Layout({ children }) {
             </Link>
           </div>
           <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-sm text-slate-600 font-medium">
+              {user?.nome}
+            </span>
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
               isAdmin ? 'bg-primary-100 text-primary-700' : 'bg-amber-100 text-amber-700'
             }`}>
-              {isAdmin ? 'Administrador' : 'Visualizador'}
+              {isAdmin ? 'Admin' : 'Viewer'}
             </span>
             <button
               onClick={logout}
