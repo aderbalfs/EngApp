@@ -18,6 +18,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('engapp_token');
     if (!token) {
+      // Limpar dados antigos do sistema anterior (login sem JWT)
+      localStorage.removeItem('engapp_user');
+      setUser(null);
       setLoading(false);
       return;
     }
