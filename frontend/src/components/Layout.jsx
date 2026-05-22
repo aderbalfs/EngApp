@@ -11,15 +11,19 @@ const navItems = [
   { to: '/convenios', label: 'Convênios', icon: FileText },
   { to: '/alertas', label: 'Alertas', icon: AlertTriangle },
   { to: '/importar', label: 'Importar CSV', icon: Upload, adminOnly: true },
-  { to: '/usuarios', label: 'Usuarios', icon: Users, adminOnly: true },
+  { to: '/usuarios', label: 'Usuarios', icon: Users, superOnly: true },
 ];
 
 export default function Layout({ children }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const filteredNav = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const filteredNav = navItems.filter((item) => {
+    if (item.superOnly) return isSuperAdmin;
+    if (item.adminOnly) return isAdmin;
+    return true;
+  });
 
   return (
     <div className="min-h-dvh flex flex-col bg-slate-50">
@@ -42,9 +46,11 @@ export default function Layout({ children }) {
               {user?.nome}
             </span>
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              isAdmin ? 'bg-primary-100 text-primary-700' : 'bg-amber-100 text-amber-700'
+              isSuperAdmin ? 'bg-purple-100 text-purple-700'
+              : isAdmin ? 'bg-primary-100 text-primary-700'
+              : 'bg-amber-100 text-amber-700'
             }`}>
-              {isAdmin ? 'Admin' : 'Viewer'}
+              {isSuperAdmin ? 'Super' : isAdmin ? 'Admin' : 'Viewer'}
             </span>
             <button
               onClick={logout}

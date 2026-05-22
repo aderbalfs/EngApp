@@ -81,7 +81,7 @@ function UserForm({ user, onSave, onCancel, loading }) {
           onChange={handleChange}
           className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
         >
-          <option value="admin">Administrador - Acesso total</option>
+          <option value="admin">Administrador - Criar/editar/excluir dados</option>
           <option value="viewer">Visualizador - Somente leitura</option>
         </select>
       </div>

@@ -47,8 +47,15 @@ export function authenticate(req, res, next) {
 }
 
 export function requireAdmin(req, res, next) {
-  if (req.user.role !== 'admin') {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Acesso restrito a administradores' });
+  }
+  next();
+}
+
+export function requireSuperAdmin(req, res, next) {
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Acesso restrito ao superusuário' });
   }
   next();
 }
@@ -94,13 +101,13 @@ export function registerAuthRoutes(app) {
   // ─── Gerenciamento de usuários (admin only) ─────────────
 
   // Listar usuários
-  app.get('/api/usuarios', authenticate, requireAdmin, async (req, res) => {
+  app.get('/api/usuarios', authenticate, requireSuperAdmin, async (req, res) => {
     const result = await pool.query('SELECT id, nome, email, role, ativo, criado_em FROM usuarios ORDER BY criado_em DESC');
     res.json(result.rows);
   });
 
   // Criar usuário
-  app.post('/api/usuarios', authenticate, requireAdmin, async (req, res) => {
+  app.post('/api/usuarios', authenticate, requireSuperAdmin, async (req, res) => {
     const { nome, email, senha, role } = req.body;
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
@@ -123,7 +130,7 @@ export function registerAuthRoutes(app) {
   });
 
   // Atualizar usuário
-  app.put('/api/usuarios/:id', authenticate, requireAdmin, async (req, res) => {
+  app.put('/api/usuarios/:id', authenticate, requireSuperAdmin, async (req, res) => {
     const { nome, email, senha, role, ativo } = req.body;
     const user = await pool.query('SELECT * FROM usuarios WHERE id = $1', [req.params.id]);
     if (!user.rows[0]) return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -142,7 +149,7 @@ export function registerAuthRoutes(app) {
   });
 
   // Deletar usuário
-  app.delete('/api/usuarios/:id', authenticate, requireAdmin, async (req, res) => {
+  app.delete('/api/usuarios/:id', authenticate, requireSuperAdmin, async (req, res) => {
     if (req.params.id === req.user.id) {
       return res.status(400).json({ error: 'Você não pode deletar sua própria conta' });
     }

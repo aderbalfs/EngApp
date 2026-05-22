@@ -18,7 +18,7 @@ function ProtectedRoute({ children, adminOnly }) {
 }
 
 function AuthenticatedApp() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
 
   return (
     <DataProvider>
@@ -31,7 +31,7 @@ function AuthenticatedApp() {
           {isAdmin && (
             <Route path="/importar" element={<ImportPage />} />
           )}
-          {isAdmin && (
+          {isSuperAdmin && (
             <Route path="/usuarios" element={<UsuariosPage />} />
           )}
           <Route path="/login" element={<Navigate to="/" replace />} />

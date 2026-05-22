@@ -70,7 +70,7 @@ export async function initDB() {
         nome TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         senha_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin', 'viewer')),
+        role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('superadmin', 'admin', 'viewer')),
         ativo BOOLEAN DEFAULT true,
         criado_em TIMESTAMP DEFAULT NOW()
       );
