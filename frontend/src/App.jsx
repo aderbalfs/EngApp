@@ -9,6 +9,7 @@ import ConvenioDetail from './pages/ConvenioDetail';
 import AlertasPage from './pages/AlertasPage';
 import ImportPage from './pages/ImportPage';
 import UsuariosPage from './pages/UsuariosPage';
+import AuditoriaPage from './pages/AuditoriaPage';
 
 function ProtectedRoute({ children, adminOnly }) {
   const { user, isAdmin } = useAuth();
@@ -33,6 +34,9 @@ function AuthenticatedApp() {
           )}
           {isSuperAdmin && (
             <Route path="/usuarios" element={<UsuariosPage />} />
+          )}
+          {isSuperAdmin && (
+            <Route path="/auditoria" element={<AuditoriaPage />} />
           )}
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

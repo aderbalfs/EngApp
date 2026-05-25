@@ -62,11 +62,14 @@ export function requireSuperAdmin(req, res, next) {
 
 // ─── Auth Routes ──────────────────────────────────────────
 
-export function registerAuthRoutes(app) {
+export function registerAuthRoutes(app, logAudit) {
 
   // Login
   app.post('/api/auth/login', async (req, res) => {
     const { email, senha } = req.body;
+    const ip = req.headers['x-forwarded-for'] || req.ip;
+    const userAgent = req.headers['user-agent'];
+
     if (!email || !senha) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
@@ -75,15 +78,18 @@ export function registerAuthRoutes(app) {
     const user = result.rows[0];
 
     if (!user) {
+      if (logAudit) logAudit({ userId: null, userEmail: email, userNome: null, acao: 'login_falha', metodo: 'POST', rota: '/api/auth/login', statusCode: 401, ip, userAgent, detalhes: 'Email nao encontrado ou inativo' });
       return res.status(401).json({ error: 'Email ou senha incorretos' });
     }
 
     const valid = await comparePassword(senha, user.senha_hash);
     if (!valid) {
+      if (logAudit) logAudit({ userId: user.id, userEmail: user.email, userNome: user.nome, acao: 'login_falha', metodo: 'POST', rota: '/api/auth/login', statusCode: 401, ip, userAgent, detalhes: 'Senha incorreta' });
       return res.status(401).json({ error: 'Email ou senha incorretos' });
     }
 
     const token = generateToken(user);
+    if (logAudit) logAudit({ userId: user.id, userEmail: user.email, userNome: user.nome, acao: 'login_sucesso', metodo: 'POST', rota: '/api/auth/login', statusCode: 200, ip, userAgent });
     res.json({
       token,
       user: { id: user.id, nome: user.nome, email: user.email, role: user.role },

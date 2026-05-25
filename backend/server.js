@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import crypto from 'crypto';
 import pool, { initDB } from './database.js';
-import { authenticate, requireAdmin, registerAuthRoutes } from './auth.js';
+import { authenticate, requireAdmin, requireSuperAdmin, registerAuthRoutes } from './auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,8 +17,50 @@ function generateId() {
   return Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
 }
 
+// ─── Audit Logger ────────────────────────────────────────
+function parseDevice(ua) {
+  if (!ua) return 'Desconhecido';
+  if (/Mobile|Android|iPhone|iPad/i.test(ua)) return 'Mobile';
+  if (/Windows/i.test(ua)) return 'Windows';
+  if (/Macintosh|Mac OS/i.test(ua)) return 'Mac';
+  if (/Linux/i.test(ua)) return 'Linux';
+  return 'Outro';
+}
+
+function logAudit({ userId, userEmail, userNome, acao, metodo, rota, statusCode, ip, userAgent, detalhes }) {
+  const dispositivo = parseDevice(userAgent);
+  pool.query(
+    `INSERT INTO audit_logs (user_id, user_email, user_nome, acao, metodo, rota, status_code, ip, user_agent, dispositivo, detalhes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [userId, userEmail, userNome, acao, metodo, rota, statusCode, ip, userAgent || '', dispositivo, detalhes || null]
+  ).catch(() => {});
+}
+
+// Middleware que loga requisicoes autenticadas de escrita
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.path.startsWith('/api') && !req.path.includes('/auth/login')) {
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      if (req.user) {
+        logAudit({
+          userId: req.user.id,
+          userEmail: req.user.email,
+          userNome: req.user.nome,
+          acao: `${req.method} ${req.path}`,
+          metodo: req.method,
+          rota: req.path,
+          statusCode: res.statusCode,
+          ip: req.headers['x-forwarded-for'] || req.ip,
+          userAgent: req.headers['user-agent'],
+        });
+      }
+      originalEnd.apply(res, args);
+    };
+  }
+  next();
+});
+
 // ─── Auth (login, me, CRUD de usuários) ───────────────────
-registerAuthRoutes(app);
+registerAuthRoutes(app, logAudit);
 
 // Helper para queries
 async function query(text, params) {
@@ -234,6 +276,40 @@ app.get('/api/dashboard', authenticate, async (req, res) => {
     totalAtivos: parseInt(ativos.count),
     valorTotal: parseFloat(valor.total),
     obrasAndamento: parseInt(obras.count),
+  });
+});
+
+// ─── Audit Logs (superadmin only) ─────────────────────────
+
+app.get('/api/audit-logs', authenticate, requireSuperAdmin, async (req, res) => {
+  const { limit = 100, offset = 0, user_id, acao } = req.query;
+  let sql = 'SELECT * FROM audit_logs';
+  const params = [];
+  const conditions = [];
+
+  if (user_id) { params.push(user_id); conditions.push(`user_id = $${params.length}`); }
+  if (acao) { params.push(`%${acao}%`); conditions.push(`acao ILIKE $${params.length}`); }
+
+  if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
+  sql += ' ORDER BY criado_em DESC';
+  params.push(parseInt(limit)); sql += ` LIMIT $${params.length}`;
+  params.push(parseInt(offset)); sql += ` OFFSET $${params.length}`;
+
+  const rows = await query(sql, params);
+  const [{ count }] = await query('SELECT COUNT(*) as count FROM audit_logs' + (conditions.length ? ' WHERE ' + conditions.join(' AND ') : ''), conditions.length ? params.slice(0, conditions.length) : []);
+  res.json({ logs: rows, total: parseInt(count) });
+});
+
+app.get('/api/audit-logs/stats', authenticate, requireSuperAdmin, async (req, res) => {
+  const [logins] = await query("SELECT COUNT(*) as count FROM audit_logs WHERE acao = 'login_sucesso'");
+  const [falhas] = await query("SELECT COUNT(*) as count FROM audit_logs WHERE acao = 'login_falha'");
+  const [acoesHoje] = await query("SELECT COUNT(*) as count FROM audit_logs WHERE criado_em >= CURRENT_DATE");
+  const usuarios = await query("SELECT DISTINCT user_email, user_nome, dispositivo, MAX(criado_em) as ultimo_acesso FROM audit_logs WHERE user_id IS NOT NULL GROUP BY user_email, user_nome, dispositivo ORDER BY ultimo_acesso DESC LIMIT 20");
+  res.json({
+    totalLogins: parseInt(logins.count),
+    totalFalhas: parseInt(falhas.count),
+    acoesHoje: parseInt(acoesHoje.count),
+    sessoes: usuarios,
   });
 });
 

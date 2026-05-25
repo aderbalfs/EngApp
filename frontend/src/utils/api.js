@@ -68,7 +68,14 @@ export const deleteRelatorio = (id) => request(`/relatorios/${id}`, { method: 'D
 // Dashboard
 export const fetchDashboard = () => request('/dashboard');
 
-// Usuarios (admin only)
+// Audit Logs (superadmin only)
+export const fetchAuditLogs = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return request(`/audit-logs${qs ? '?' + qs : ''}`);
+};
+export const fetchAuditStats = () => request('/audit-logs/stats');
+
+// Usuarios (superadmin only)
 export const fetchUsuarios = () => request('/usuarios');
 export const createUsuario = (data) => request('/usuarios', { method: 'POST', body: JSON.stringify(data) });
 export const updateUsuario = (id, data) => request(`/usuarios/${id}`, { method: 'PUT', body: JSON.stringify(data) });

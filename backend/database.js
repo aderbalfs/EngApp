@@ -74,6 +74,22 @@ export async function initDB() {
         ativo BOOLEAN DEFAULT true,
         criado_em TIMESTAMP DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT,
+        user_email TEXT,
+        user_nome TEXT,
+        acao TEXT NOT NULL,
+        metodo TEXT,
+        rota TEXT,
+        status_code INTEGER,
+        ip TEXT,
+        user_agent TEXT,
+        dispositivo TEXT,
+        detalhes TEXT,
+        criado_em TIMESTAMP DEFAULT NOW()
+      );
     `);
     console.log('Database tables initialized');
   } finally {
